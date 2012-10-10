@@ -1,0 +1,13 @@
+{
+    "name": "kung",
+    "version": "0.1.0",
+    "description": "Kung and Robinson style transactions",
+    "dependencies" : {
+        "zappajs": ">= 0.4",
+        "connect-assets": ">= 2.3.3",
+        "q": ">= 0.8.8",
+        "jquery": ">= 1.6",
+        "underscore": ">= 1.4.1",
+        "docco": ">= 0.4.0"
+    }
+}

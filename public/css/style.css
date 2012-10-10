@@ -1,0 +1,62 @@
+body {
+  /*
+  margin: 0;
+  padding: 0;
+  */
+}
+
+table, table td, table th {
+  border: 1px solid #ccc;
+  border-collapse: collapse;
+  padding: .5em;
+}
+
+table.transaction td.value {
+  width: 200px;
+}
+
+table.transaction td.no-data {
+  background: #eee;
+}
+
+
+table.transaction-log tr.invalid td {
+  background: #fcc;
+}
+
+#left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 50%;
+  bottom: 0;
+  height: 100%;
+  padding-left: 2em;
+}
+
+#right {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 50%;
+  overflow: auto;
+  border-left: 2px dashed #ccc;
+  padding-left: 2em;
+}
+
+/* test page */
+
+
+div#tests {
+  padding-left: 2em;
+}
+
+
+table.suite .pass td.status {
+  background-color: #8ae234;
+}
+
+table.suite .fail td.status {
+  background-color: #ef2929;
+}

@@ -1,0 +1,331 @@
+% vi: ft=plaintex sw=2 sts=2
+
+\chapter{Technologies}
+
+The following sections will describe the technologies needed to implement a
+simple web application that allows creation and submission of transactions and
+proper handling of isolated transactions that are submitted while being
+disconnected from the server. The database is a simple key-value store on the
+server side, the client will consist of a simple form to add entries to the
+\emph{read} set and add pairs to the \emph{write} set.
+
+The client should also display a table of the locally isolated transactions and
+the transaction application attempts on the remote database. This isn't strictly
+necessary for production use but helpful in a demonstration project.
+
+The validation and application of transactions is done centrally on a server
+that accepts \emph{WebSocket} requests. Clients must call the remote methods
+|applyTransaction| and |reintegrateTransactions| to apply their transactions.
+
+\section{CoffeeScript}
+
+\fnurl{CoffeeScript}{http://www.coffeescript.org} is a language that compiles to
+JavaScript. The JavaScript language is widely considered as lacking and
+partially flawed, which has spawned many other languages that aim to provide
+languages with better semantics that then compile to JavaScript. Most of the
+syntax is easily understandable for anyone who has programmed in C, Java or
+JavaScript, but there are some aspects that should be explained in detail:
+
+\begin{description}
+\item[Implicit local scope]
+In JavaScript, values are implicitly global if not declared with the
+|var| statment. CoffeeScript has the inverse approach and
+treats values as implicitly function-scoped unless explicitly declared as
+global by attaching them to the global object (e.g. |window| in the browser).
+This means that the |var| keyword can be dropped.
+
+
+\item[Shorthand for \emph{this}]
+The |this| operator in JavaScript returns a reference to the current function.
+CoffeeScript provides a shorthand by allowing to write |@attr| instead of
+|this.attr|.
+
+For more information on the JavaScript |this| operator, refer to the
+\fnurl{Mozilla Developer Network}
+{https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Operators/this}
+
+\item[Improved function declaration notation]
+The way to declare a function in JavaScript is to type out the keyword
+|function|, which gets tiresome quickly. Example in JavaScript
+
+\begin{minted}{coffeescript}
+var add = function (a, b) { return a + b }
+\end{minted}
+
+CoffeeScript offers the shorthand |->|
+
+\begin{minted}{coffeescript}
+add = (a, b) -> return a + b
+\end{minted}
+
+The "fat-arrow" notation |=>| preserves the scope of |this|
+
+\begin{minted}{coffeescript}
+func = ->
+    @attr = 1
+    x = => @attr
+    x() # is 1
+\end{minted}
+
+\item[Implicit return]
+Another improvement is considering the last return value of a statement in a
+function as the return value of the function. To improve our previous example,
+it is now possible to write
+
+\begin{minted}{coffeescript}
+add = (a, b) -> a + b
+\end{minted}
+
+\item[Significant whitespace]
+As indicated in the last example, C-style curly braces are also optional and can
+be replaced with significant whitespace. Code blocks are then indicated with
+indentation:
+
+\begin{minted}{coffeescript}
+foo = ->
+    # some code
+    bar = ->
+        # some other code
+        # part of the "bar" scope
+
+    # this is part of the "foo" scope
+\end{minted}
+
+\item[Object notation]
+Another instance of optional curly braces is an improvement on the object
+notation: JavaScript Objects are hash tables that can be declared by the
+notation
+
+\begin{minted}{javascript}
+var o = {a: 1, b: 2}
+\end{minted}
+
+CoffeeScript also accepts the forms
+
+\begin{minted}{coffeescript}
+o = a: 1, b: 2
+\end{minted}
+
+and
+
+\begin{minted}{coffeescript}
+o =
+    a: 1
+    b: 2
+\end{minted}
+
+
+\item[Nearly everything is an expression]
+Many constructs that are traditionally regarded as statements in other languages
+can be used as expressions in CoffeeScript. For example
+
+\begin{minted}{coffeescript}
+max = (a, b) -> if (a > b) then a else b
+\end{minted}
+
+\item[Implicit parentheses]
+The last significant deviation from C-style syntax is the use of implicit
+braces. Instead of writing
+
+\begin{minted}{coffeescript}
+result = max(a, b)
+\end{minted}
+
+you can use the lighter notation of
+
+\begin{minted}{coffeescript}
+result = max a, b
+\end{minted}
+
+\end{description}
+
+\section{Underscore.js}
+
+JavaScript's first-class functions allow for a functional style of programming.
+Unfortunately, common primitives for functional programming like \emph{map} and
+\emph{each} are lacking or inconsistently implemented across browsers. The
+JavaScript library \emph{underscore.js} aims at patching the deficiencies of
+standard JavaScript and providing a toolkit for functional programming.
+
+Underscore methods are accessible through the underscore identifier: \emph{\_}
+
+Example:
+
+\begin{minted}{coffeescript}
+result = _.map [1,2,3,4], (x) -> x * 2
+
+# result is [2, 4, 6, 8]
+\end{minted}
+
+\begin{minted}{coffeescript}
+result = _.all [1,2,3,4], (x) -> x < 4
+
+# result is false since (4 < 4) is false
+\end{minted}
+
+A commonly used pattern for creating an object from another object uses the
+function |_.reduce|. From the documentation
+
+\begin{quote}
+ |_.reduce(list, iterator, memo, [context])|
+
+ Boils down a list of values into a single value. Memo is the initial state of
+ the reduction, and each successive step of it should be returned by iterator.
+ The iterator is passed four arguments: the |memo|, then the |value| and |index|
+ (or |key|) of the iteration, and finally a reference to the entire list.
+
+ \begin{minted}{coffeescript}
+  sum = _.reduce(
+    [1, 2, 3], ((memo, num) -> memo + num), 0
+  )
+  # sum = 6
+ \end{minted}
+\end{quote}
+
+To read all values form a database and return a dictionary with |key: value|
+mappings, |_.reduce| can be used as follows:
+
+\begin{minted}{coffeescript}
+  result = _.reduce(
+   readKeys,
+   ((obj, key) ->
+    obj[key] = database.read key
+    obj),
+   {}
+  )
+\end{minted}
+
+We will use this library on the client side as well as on the server. The
+functional programming style greatly improves the readability of the described
+algorithms.
+
+\section{Node.js}
+
+The server stack for our project is based on
+\fnurl{\emph{Node.js}}{http://www.nodejs.org}, a popular
+stand-alone implementation of JavaScript based on Chrome's \fnurl{\emph{V8
+JavasScript Engine}}{http://code.google.com/p/v8/} engine.
+
+Since the client-side API of WebSocket can only be used in JavaScript, this
+allows the server to be written in the same language as the client and reduces
+mental context switching when writing web applications. Another feature is
+sharing code and libraries on the client and the server, which improves code
+reuse and readability.
+
+JavaScript is designed to run as a single thread, concurrency is achieved by
+using events. This reduces the amount of locking and thread management on the
+server and the client and thereby contributes to ease of development and overall
+code quality.
+
+\section{Zappa.js}
+
+The web application framework \fnurl{\emph{Zappa.js}}{http://www.zappajs.org} is
+a CoffeeScript-friendly adaptation of
+\fnurl{\emph{express.js}}{http://www.expressjs.com}, a web application framework
+on top of \emph{node.js}. A simple web application written in \emph{Zappa.js}
+can be written as:
+
+\begin{minted}{coffeescript}
+require('zappajs') ->
+  @get '/': ->
+    @render index: {layout: no}
+
+  @view index: ->
+    doctype 5
+    html ->
+      head -> title "Hello World!"
+      h1 "Hello World!"
+\end{minted}
+
+\pagebreak
+A useful feature of \emph{Zappa.js} is the seamless integration of client-side
+code that can be written in CoffeScript
+
+\begin{minted}{coffeescript}
+require('zappajs') ->
+  # (... see previous sample)
+
+  # expose script via path "/client.js"
+  @client '/client.js': ->
+    # greet client with an alert message
+    alert "Hello World!"
+\end{minted}
+
+\section{Socket.io}
+
+The JavaScript library \fnurl{\emph{socket.io}}{http://www.socket.io} provides
+an abstraction over the raw WebSocket API on the client as well as on the server
+side. This allows developers to use the same primitives in both environments,
+greatly improving the usability of WebSocket.
+
+The basic \emph{socket.io} structure in JavaScript on the server looks like this:
+
+\begin{minted}{javascript}
+var io = require('socket.io').listen(80);
+
+io.sockets.on('connection', function (socket) {
+  socket.emit('news', { hello: 'world' });
+
+  socket.on('my other event', function (data) {
+    console.log(data);
+  });
+});
+\end{minted}
+
+The client can communicate with the server and respond to server-side events via
+the construct
+
+\begin{minted}{javascript}
+var socket = io.connect('http://localhost');
+socket.on('news', function (data) {
+  console.log(data);
+  socket.emit('my other event', { my: 'data' });
+});
+\end{minted}
+
+The communication in \emph{socket.io} is event-oriented. Connecting to the server
+triggers the |connection| event. The callback function defined in the example
+uses `socket.emit` to send the |'news'| event to the client, which logs the
+transmitted data (|{hello: 'world'}|) to the console and in turn triggers
+ |'my other event'|.
+
+
+\pagebreak
+\subsection{Socket.io integration in Zappa.js}
+
+Utilizing the tight integration of client-side JavaScript running on the browser
+into the server-side JavaScript, Zappa.js offers a tighter integration layer on
+top of \emph{socket.io}
+
+\begin{minted}{coffeescript}
+require 'zappajs', ->
+  @on message_to_server: ->
+    console.log @data
+    @emit message_to_client: 'pong'
+
+  @client '/client.js': ->
+    @connect()
+    @emit message_to_server: 'ping'
+    @on message_to_client: -> console.log @data
+\end{minted}
+
+In this example, the client connects to the server and sends the message of the
+type |message_to_server| containing the value |'ping'| using the method |@emit|
+(property of the function |@client|).
+
+The server has registered a handler for the message type |message_to_server|
+using the |@on| method, which in turn emits the message |message_to_client|.
+
+It is also possible to return a response for an emitted message using the |@ack|
+method, if the client emit method receives a function as the last parameter
+
+\begin{minted}{coffeescript}
+@on message_to_server: ->
+  @ack "pong"
+
+@client '/client.js': ->
+  @connect()
+  @emit messaget_to_server: "ping", -> console.log @data
+\end{minted}
+
+Here the client will display \emph{pong} in the browser console.

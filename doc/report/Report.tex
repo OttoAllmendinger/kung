@@ -1,0 +1,73 @@
+% vim: ft=plaintex sw=2 sts=2
+
+\documentclass[pdftex,a4paper]{report}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage[bitstream-charter]{mathdesign}
+\usepackage{amsmath}
+
+\usepackage{graphicx}
+
+\usepackage{pgf}
+
+\usepackage{listings}
+\usepackage{dirtree}
+\usepackage{hyperref}
+
+\usepackage{xspace}
+
+% usage \fnurl{label}{url}
+\newcommand\fnurl[2]{%
+  \href{#2}{#1}\footnote{\url{#2}}%
+}
+
+\definecolor{links}{HTML}{1111cc}
+\hypersetup{colorlinks,linkcolor=,urlcolor=links}
+
+\usepackage{minted}
+
+\usepackage{tabularx}
+
+
+\usepackage{fancyvrb}
+\DefineShortVerb{\|}
+
+
+\begin{document}
+
+\begin{titlepage}
+
+\title{Project Report\\WebSocket}
+\author{Otto Allmendinger}
+\date{10. October 2012}
+\maketitle
+
+\end{titlepage}
+
+\tableofcontents
+
+\input{Chapter_Introduction.tex}
+
+\input{Chapter_Technologies.tex}
+
+\input{Chapter_Implementation.tex}
+
+\input{Chapter_Conclusion.tex}
+
+
+\begin{thebibliography}{9}
+
+  \bibitem{kung1981}
+    H.T. Kung and J. Robinson, "On optimistic methods for concurrency control"
+    ACM Transactions on Database Systems, 6(2), June 1981
+
+  \bibitem{fuchss2009}
+    Prof. Dr. Thomas Fuchß, "Mobile Computing - Grundlagen und Konzepte für
+    mobile Anwendungen", Hanser Verlag, 2009
+
+\end{thebibliography}
+
+\end{document}

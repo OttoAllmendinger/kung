@@ -1,0 +1,143 @@
+% vi: ft=plaintex sw=2 sts=2
+
+\chapter{Introduction}
+
+\section{WebSocket}
+
+WebSocket is a new web technology for full-duplex communication between web
+browsers and web servers\fnurl{}
+{https://developer.mozilla.org/en-US/docs/WebSockets}. Normally a web
+browser fetches data via HTTP GET requests and transmits data to the server via
+a HTTP POST request, which then can also contain response data. The downside is
+that each request and response causes \fnurl{considerable overhead}
+{http://blog.kaazing.com/2010/02/24/5-signs-you-need-html5-web-sockets-part-2/}, 
+since the HTTP protocol has been designed for transmitting web pages and not
+real-time data.  There also is no mechanism for a server to push data to the
+client without the client initiating an HTTP request.
+
+There are workarounds for these problems, like long-lived GET and POST requests,
+but these have their own downsides.
+
+WebSocket is comparable to TCP sockets in that it offers a standing connection
+that allows sending and receiving information without a request-response cycle.
+
+\subsection{Opportunities and problems}
+
+The WebSocket standard is part of a larger trend of the web client becoming more
+powerful. One possible application of WebSocket in combination with the
+\fnurl{\emph{DOM Storage API}}
+{https://developer.mozilla.org/en-US/docs/DOM/Storage} is the use of client-side
+data management where the server can push data to the client and the client can
+send small messages to the server with little overhead.
+
+A common scenario is a client reading some entries from the server, performing a
+possibly time-consuming task with the read data, and storing a result on the
+server. The question then arises: what should happen when the input data changed
+in the meantime?
+
+One way to deal with this is by locking the input values and not allowing
+other clients to change them until the task is completed.
+
+This has several downsides: keeping locks is expensive and not always necessary.
+Additionally, there is no way for another client to know if a write lock is
+actually used or only accidentally granted.
+
+\section{Optimistic concurrency with Kung and Robinson}
+
+An alternative to locking is the use of transactions as described in Kung and
+Robinsons paper \emph{On optimistic methods for concurrency control}
+\cite{kung1981}.
+
+The paper presents a simple protocol for applying transactions: each transaction
+has a \emph{read set} of entries that are expected to not have changed, a set of
+entries to be written in case the input values haven't changed, and a
+transaction number \emph{startTn} that indicates when the reads have been made.
+
+When applying the transaction, the server checks if there have been any changes
+to the \emph{read set} since \emph{startTn} by checking the writes of the
+transactions between \emph{startTn} and the current transaction number (the
+number of the least recently applied transaction). If this condition holds true,
+the changes declared in the \emph{write set} are applied, the transaction number
+is increased and the transaction is stored internally in order to validate new
+transactions.
+
+Kung and Robinson also defined the operations \emph{create} and \emph{delete},
+which can be omitted in this project because low-level memory management is not
+a priority on modern systems.
+
+\subsection{Offline transactions}
+
+In \emph{Mobile Computing} by Prof. Dr. Th. Fuchß \cite{fuchss2009}, a method of
+maintaining a consistent database is described where the client is disconnected
+from the database for a period of time while still generating transactions.
+Instead of applying the transaction immediately, the client stores the
+transaction locally and requests a reintegration of all locally isolated
+transactions on reconnect.
+
+\pagebreak
+\subsection{Examples}
+
+\subsubsection{Applications of single transactions}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|lllll|}
+  \hline
+  startTn & Reads & Writes & Valid & assigned Tn\\ \hline
+  0       & a     & b: 1, c: 2  & true  & 1 \\
+  0       &       & b: 2        & true  & 2 \\
+  0       & a, b  & b: 3        & false & - \\
+  2       & a, b  & b: 3, a: 1  & true  & 3 \\
+  \hline
+\end{tabular}
+\caption{application of single transactions}
+\label{tab:application-of-single-transactions}
+\end{table}
+
+The third transaction failed because \emph{b} has been modified since
+\emph{startId} 0. The final data table on the server is \emph{a: 1, b: 3, c: 2}.
+
+\subsubsection{Reintegration of a collection of transactions}
+
+The next tables describes a scenario where offline isolated transaction are
+reintegrated into the remote database. Note that the transaction number
+(\emph{\#}) is only used internally and is not relevant for the reintegration,
+where a global \emph{startId} is passed alongside the collection of
+transactions.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|lll|}
+  \hline
+  \# & Reads & Writes \\ \hline
+  1 & a     & b: 1 \\
+  2 &       & c: 2 \\
+  3 & a, b  & b: 3 \\
+  4 & c     & b: 4 \\
+  \hline
+\end{tabular}
+\caption{isolated transactions}
+\label{tab:isolated-transactions}
+\end{table}
+
+The assumed transactions on the remote database
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|ll|}
+  \hline
+  Tn & Writes \\ \hline
+  4  & a: 1, b: 1 \\
+  5  & a: 2 \\
+  6  & b: 5 \\
+  \hline
+\end{tabular}
+\caption{remote writes}
+\label{tab:remote-writes}
+\end{table}
+
+The reintegration of these transactions starting at \emph{startTn = 4} checks
+modifications by other modifications beginning at the transaction with the id
+\emph{5} (to stay consistent with the use of \emph{startTn} in the single
+transaction application mode). Only transactions \#2 and \#4 succeed. The local
+transactions \#1 and \#3 fail due to the remote transaction \#5.  The resulting database entries are \emph{a: 1, b: 4, c: 2}
